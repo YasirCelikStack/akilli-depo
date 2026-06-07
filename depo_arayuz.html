@@ -1,0 +1,1816 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>DepoYönet — Akıllı Depo Yönetim Sistemi</title>
+<link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;600;700;800&family=DM+Sans:ital,wght@0,300;0,400;0,500;1,300&display=swap" rel="stylesheet">
+<style>
+  /* ── Reset & Base ───────────────────────────────── */
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  :root {
+    --bg:        #080E1C;
+    --surface:   #0E1628;
+    --surface2:  #162038;
+    --surface3:  #1C2A48;
+    --border:    #1E2E50;
+    --border2:   #243560;
+    --a1:        #4F8EF7;
+    --a2:        #7B5CF0;
+    --a3:        #00D4AA;
+    --warn:      #F59E0B;
+    --danger:    #EF4444;
+    --success:   #22C55E;
+    --t1:        #EEF2FF;
+    --t2:        #94A3B8;
+    --t3:        #475569;
+    --radius:    12px;
+    --radius-sm: 8px;
+    --shadow:    0 4px 24px rgba(0,0,0,.45);
+    --glow-a1:   0 0 32px rgba(79,142,247,.18);
+    --glow-a3:   0 0 32px rgba(0,212,170,.18);
+  }
+
+  html { scroll-behavior: smooth; }
+
+  body {
+    font-family: 'DM Sans', sans-serif;
+    background: var(--bg);
+    color: var(--t1);
+    min-height: 100vh;
+    overflow-x: hidden;
+  }
+
+  /* ── Dot-grid background ─────────────────────────── */
+  body::before {
+    content: '';
+    position: fixed; inset: 0; z-index: 0;
+    background-image: radial-gradient(circle, #1a2540 1px, transparent 1px);
+    background-size: 24px 24px;
+    pointer-events: none;
+    opacity: .55;
+  }
+
+  /* ── Glow blobs ──────────────────────────────────── */
+  .blob {
+    position: fixed; border-radius: 50%;
+    filter: blur(90px); pointer-events: none; z-index: 0;
+    opacity: .12;
+  }
+  .blob-1 { width: 500px; height: 500px; background: var(--a1); top: -150px; right: -100px; }
+  .blob-2 { width: 400px; height: 400px; background: var(--a2); bottom: -100px; left: -80px; }
+  .blob-3 { width: 300px; height: 300px; background: var(--a3); top: 40%; left: 40%; }
+
+  /* ── Layout ──────────────────────────────────────── */
+  #app { position: relative; z-index: 1; display: flex; min-height: 100vh; }
+
+  /* ── Sidebar ─────────────────────────────────────── */
+  .sidebar {
+    width: 240px; flex-shrink: 0;
+    background: var(--surface);
+    border-right: 1px solid var(--border);
+    display: flex; flex-direction: column;
+    position: sticky; top: 0; height: 100vh;
+    backdrop-filter: blur(12px);
+  }
+
+  .sidebar-logo {
+    padding: 28px 24px 20px;
+    border-bottom: 1px solid var(--border);
+  }
+  .sidebar-logo .logo-icon {
+    width: 40px; height: 40px; border-radius: 10px;
+    background: linear-gradient(135deg, var(--a1), var(--a2));
+    display: flex; align-items: center; justify-content: center;
+    font-size: 18px; margin-bottom: 10px;
+    box-shadow: var(--glow-a1);
+  }
+  .sidebar-logo h1 {
+    font-family: 'Syne', sans-serif;
+    font-size: 15px; font-weight: 800; letter-spacing: .02em;
+    color: var(--t1);
+  }
+  .sidebar-logo p { font-size: 11px; color: var(--t3); margin-top: 2px; }
+
+  .sidebar-nav { flex: 1; padding: 16px 12px; overflow-y: auto; }
+
+  .nav-section-label {
+    font-size: 10px; font-weight: 600; letter-spacing: .1em;
+    color: var(--t3); text-transform: uppercase;
+    padding: 0 12px; margin: 16px 0 6px;
+  }
+
+  .nav-item {
+    display: flex; align-items: center; gap: 10px;
+    padding: 10px 14px; border-radius: var(--radius-sm);
+    cursor: pointer; color: var(--t2); font-size: 13.5px;
+    transition: all .18s ease; position: relative;
+    user-select: none;
+  }
+  .nav-item:hover { background: var(--surface2); color: var(--t1); }
+  .nav-item.active {
+    background: linear-gradient(90deg, rgba(79,142,247,.15), transparent);
+    color: var(--a1);
+    border-left: 2px solid var(--a1);
+    margin-left: -2px;
+  }
+  .nav-item .nav-icon { font-size: 16px; width: 20px; text-align: center; }
+  .nav-badge {
+    margin-left: auto; background: var(--danger);
+    color: #fff; font-size: 10px; font-weight: 700;
+    padding: 2px 7px; border-radius: 99px;
+  }
+
+  .sidebar-footer {
+    padding: 16px; border-top: 1px solid var(--border);
+    display: flex; align-items: center; gap: 10px;
+  }
+  .avatar {
+    width: 34px; height: 34px; border-radius: 50%;
+    background: linear-gradient(135deg, var(--a1), var(--a2));
+    display: flex; align-items: center; justify-content: center;
+    font-family: 'Syne', sans-serif; font-weight: 800; font-size: 12px;
+  }
+  .sidebar-footer .user-name { font-size: 13px; font-weight: 500; }
+  .sidebar-footer .user-role { font-size: 11px; color: var(--t3); }
+
+  /* ── Main content ────────────────────────────────── */
+  .main { flex: 1; display: flex; flex-direction: column; overflow: hidden; }
+
+  /* ── Topbar ──────────────────────────────────────── */
+  .topbar {
+    height: 64px; display: flex; align-items: center;
+    padding: 0 28px; gap: 16px;
+    background: rgba(8,14,28,.7); backdrop-filter: blur(16px);
+    border-bottom: 1px solid var(--border);
+    position: sticky; top: 0; z-index: 10;
+  }
+  .topbar-title {
+    font-family: 'Syne', sans-serif;
+    font-size: 18px; font-weight: 700;
+  }
+  .topbar-sub { font-size: 12px; color: var(--t3); margin-top: 1px; }
+  .topbar-spacer { flex: 1; }
+
+  .search-box {
+    display: flex; align-items: center; gap: 8px;
+    background: var(--surface2); border: 1px solid var(--border);
+    border-radius: var(--radius-sm); padding: 8px 14px;
+    width: 240px; transition: border-color .2s;
+  }
+  .search-box:focus-within { border-color: var(--a1); box-shadow: var(--glow-a1); }
+  .search-box input {
+    background: none; border: none; outline: none;
+    color: var(--t1); font-size: 13px; width: 100%;
+    font-family: 'DM Sans', sans-serif;
+  }
+  .search-box input::placeholder { color: var(--t3); }
+  .search-icon { color: var(--t3); font-size: 14px; }
+
+  .topbar-actions { display: flex; gap: 8px; }
+  .icon-btn {
+    width: 36px; height: 36px; border-radius: var(--radius-sm);
+    background: var(--surface2); border: 1px solid var(--border);
+    display: flex; align-items: center; justify-content: center;
+    cursor: pointer; font-size: 15px; color: var(--t2);
+    transition: all .15s; position: relative;
+  }
+  .icon-btn:hover { background: var(--surface3); color: var(--t1); border-color: var(--border2); }
+  .notif-dot {
+    position: absolute; top: 6px; right: 6px;
+    width: 8px; height: 8px; background: var(--danger);
+    border-radius: 50%; border: 2px solid var(--surface);
+  }
+
+  /* ── Page content ────────────────────────────────── */
+  .page { display: none; flex: 1; overflow-y: auto; padding: 28px; }
+  .page.active { display: block; }
+
+  /* ── Stats grid ──────────────────────────────────── */
+  .stats-grid {
+    display: grid; grid-template-columns: repeat(4, 1fr);
+    gap: 16px; margin-bottom: 28px;
+  }
+  .stat-card {
+    background: var(--surface); border: 1px solid var(--border);
+    border-radius: var(--radius); padding: 20px;
+    position: relative; overflow: hidden;
+    transition: transform .2s, box-shadow .2s;
+    animation: fadeUp .4s ease both;
+  }
+  .stat-card:hover { transform: translateY(-2px); box-shadow: var(--shadow); }
+  .stat-card::before {
+    content: ''; position: absolute; top: 0; left: 0; right: 0; height: 2px;
+  }
+  .stat-card.blue::before   { background: linear-gradient(90deg, var(--a1), var(--a2)); }
+  .stat-card.teal::before   { background: linear-gradient(90deg, var(--a3), var(--a1)); }
+  .stat-card.warn::before   { background: linear-gradient(90deg, var(--warn), #f97316); }
+  .stat-card.danger::before { background: linear-gradient(90deg, var(--danger), #dc2626); }
+  .stat-label { font-size: 11.5px; color: var(--t3); text-transform: uppercase; letter-spacing: .07em; }
+  .stat-value { font-family: 'Syne', sans-serif; font-size: 30px; font-weight: 800; margin: 6px 0 4px; }
+  .stat-sub   { font-size: 11.5px; color: var(--t2); }
+  .stat-icon  { position: absolute; right: 18px; top: 18px; font-size: 22px; opacity: .25; }
+
+  /* ── Section header ──────────────────────────────── */
+  .section-header {
+    display: flex; align-items: center; gap: 12px;
+    margin-bottom: 16px;
+  }
+  .section-title {
+    font-family: 'Syne', sans-serif;
+    font-size: 15px; font-weight: 700; flex: 1;
+  }
+
+  /* ── Buttons ─────────────────────────────────────── */
+  .btn {
+    display: inline-flex; align-items: center; gap: 7px;
+    padding: 9px 18px; border-radius: var(--radius-sm);
+    font-size: 13px; font-weight: 500; cursor: pointer;
+    border: none; outline: none; transition: all .15s;
+    font-family: 'DM Sans', sans-serif; white-space: nowrap;
+  }
+  .btn-primary {
+    background: linear-gradient(135deg, var(--a1), var(--a2));
+    color: #fff; box-shadow: 0 4px 14px rgba(79,142,247,.35);
+  }
+  .btn-primary:hover { opacity: .88; transform: translateY(-1px); }
+  .btn-ghost {
+    background: var(--surface2); color: var(--t2);
+    border: 1px solid var(--border);
+  }
+  .btn-ghost:hover { background: var(--surface3); color: var(--t1); border-color: var(--border2); }
+  .btn-danger { background: rgba(239,68,68,.15); color: var(--danger); border: 1px solid rgba(239,68,68,.3); }
+  .btn-danger:hover { background: rgba(239,68,68,.25); }
+  .btn-success { background: rgba(34,197,94,.15); color: var(--success); border: 1px solid rgba(34,197,94,.3); }
+  .btn-success:hover { background: rgba(34,197,94,.25); }
+  .btn-sm { padding: 6px 12px; font-size: 12px; }
+  .btn:disabled { opacity: .5; cursor: not-allowed; }
+
+  /* ── Table ───────────────────────────────────────── */
+  .table-wrap {
+    background: var(--surface); border: 1px solid var(--border);
+    border-radius: var(--radius); overflow: hidden;
+  }
+  .table-toolbar {
+    display: flex; align-items: center; gap: 10px;
+    padding: 14px 18px; border-bottom: 1px solid var(--border);
+    flex-wrap: wrap;
+  }
+  .filter-group { display: flex; gap: 6px; flex-wrap: wrap; }
+  .filter-chip {
+    padding: 5px 12px; border-radius: 99px; font-size: 12px;
+    cursor: pointer; border: 1px solid var(--border);
+    background: var(--surface2); color: var(--t2);
+    transition: all .15s; user-select: none;
+  }
+  .filter-chip.active {
+    background: rgba(79,142,247,.18); border-color: var(--a1);
+    color: var(--a1); font-weight: 600;
+  }
+  table {
+    width: 100%; border-collapse: collapse;
+    font-size: 13.5px;
+  }
+  thead th {
+    padding: 12px 18px; text-align: left;
+    font-size: 11px; font-weight: 600; letter-spacing: .08em;
+    color: var(--t3); text-transform: uppercase;
+    background: var(--surface2); border-bottom: 1px solid var(--border);
+    cursor: pointer; user-select: none;
+    white-space: nowrap;
+  }
+  thead th:hover { color: var(--t1); }
+  thead th .sort-icon { margin-left: 4px; opacity: .5; }
+  tbody tr {
+    border-bottom: 1px solid var(--border);
+    transition: background .12s;
+    animation: fadeUp .3s ease both;
+  }
+  tbody tr:last-child { border-bottom: none; }
+  tbody tr:hover { background: var(--surface2); }
+  td { padding: 14px 18px; color: var(--t2); vertical-align: middle; }
+  td.primary { color: var(--t1); font-weight: 500; }
+
+  .sku-badge {
+    font-size: 11px; padding: 3px 8px; border-radius: 5px;
+    background: rgba(79,142,247,.12); color: var(--a1);
+    font-family: monospace; letter-spacing: .04em;
+  }
+
+  .stock-cell { display: flex; align-items: center; gap: 8px; }
+  .stock-bar {
+    width: 60px; height: 5px; background: var(--border);
+    border-radius: 99px; overflow: hidden; flex-shrink: 0;
+  }
+  .stock-fill {
+    height: 100%; border-radius: 99px;
+    background: var(--success); transition: width .4s ease;
+  }
+  .stock-fill.warn   { background: var(--warn); }
+  .stock-fill.danger { background: var(--danger); }
+
+  .status-pill {
+    display: inline-flex; align-items: center; gap: 5px;
+    padding: 3px 10px; border-radius: 99px; font-size: 11.5px; font-weight: 600;
+  }
+  .status-pill.ok     { background: rgba(34,197,94,.12); color: var(--success); }
+  .status-pill.low    { background: rgba(245,158,11,.12); color: var(--warn); }
+  .status-pill.empty  { background: rgba(239,68,68,.12);  color: var(--danger); }
+  .status-pill::before { content: '●'; font-size: 7px; }
+
+  .action-group { display: flex; gap: 6px; }
+
+  /* ── Modal ───────────────────────────────────────── */
+  .modal-overlay {
+    display: none; position: fixed; inset: 0; z-index: 100;
+    background: rgba(4,8,18,.7); backdrop-filter: blur(6px);
+    align-items: center; justify-content: center;
+    animation: fadeIn .15s ease;
+  }
+  .modal-overlay.open { display: flex; }
+  .modal {
+    background: var(--surface); border: 1px solid var(--border2);
+    border-radius: 16px; width: 520px; max-width: 95vw;
+    box-shadow: 0 24px 64px rgba(0,0,0,.6);
+    animation: slideUp .2s ease;
+    max-height: 90vh; overflow-y: auto;
+  }
+  .modal-header {
+    display: flex; align-items: center; justify-content: space-between;
+    padding: 22px 24px 16px;
+    border-bottom: 1px solid var(--border);
+  }
+  .modal-title { font-family: 'Syne', sans-serif; font-size: 16px; font-weight: 700; }
+  .modal-close {
+    width: 32px; height: 32px; border-radius: 8px;
+    background: var(--surface2); border: 1px solid var(--border);
+    display: flex; align-items: center; justify-content: center;
+    cursor: pointer; font-size: 16px; color: var(--t2);
+    transition: all .15s;
+  }
+  .modal-close:hover { background: var(--surface3); color: var(--t1); }
+  .modal-body { padding: 20px 24px; }
+  .modal-footer {
+    display: flex; justify-content: flex-end; gap: 10px;
+    padding: 16px 24px; border-top: 1px solid var(--border);
+  }
+
+  /* ── Form ────────────────────────────────────────── */
+  .form-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+  .form-group { display: flex; flex-direction: column; gap: 6px; }
+  .form-group.full { grid-column: 1 / -1; }
+  label { font-size: 12px; font-weight: 600; color: var(--t2); letter-spacing: .04em; }
+  .form-input, .form-select, .form-textarea {
+    background: var(--surface2); border: 1px solid var(--border);
+    border-radius: var(--radius-sm); padding: 10px 14px;
+    color: var(--t1); font-size: 13.5px; outline: none;
+    transition: border-color .15s, box-shadow .15s;
+    font-family: 'DM Sans', sans-serif; width: 100%;
+  }
+  .form-input:focus, .form-select:focus, .form-textarea:focus {
+    border-color: var(--a1); box-shadow: 0 0 0 3px rgba(79,142,247,.12);
+  }
+  .form-input::placeholder, .form-textarea::placeholder { color: var(--t3); }
+  .form-select option { background: var(--surface2); }
+  .form-textarea { resize: vertical; min-height: 80px; }
+  .form-hint { font-size: 11px; color: var(--t3); }
+
+  /* ── Empty state ─────────────────────────────────── */
+  .empty-state {
+    text-align: center; padding: 64px 32px; color: var(--t3);
+  }
+  .empty-state .empty-icon { font-size: 48px; margin-bottom: 16px; opacity: .5; }
+  .empty-state h3 { font-family: 'Syne', sans-serif; font-size: 15px; color: var(--t2); margin-bottom: 6px; }
+  .empty-state p { font-size: 13px; }
+
+  /* ── Toast ───────────────────────────────────────── */
+  #toast-container {
+    position: fixed; bottom: 28px; right: 28px; z-index: 999;
+    display: flex; flex-direction: column; gap: 10px;
+  }
+  .toast {
+    display: flex; align-items: center; gap: 10px;
+    padding: 13px 18px; border-radius: var(--radius-sm);
+    background: var(--surface); border: 1px solid var(--border2);
+    box-shadow: var(--shadow); font-size: 13.5px;
+    min-width: 260px; max-width: 360px;
+    animation: toastIn .25s ease;
+  }
+  .toast.success { border-color: rgba(34,197,94,.4); }
+  .toast.error   { border-color: rgba(239,68,68,.4);  }
+  .toast.info    { border-color: rgba(79,142,247,.4); }
+  .toast-icon { font-size: 16px; flex-shrink: 0; }
+  .toast-msg  { flex: 1; }
+
+  /* ── Loader ──────────────────────────────────────── */
+  .loader-row td {
+    text-align: center; padding: 48px;
+    color: var(--t3); font-size: 13px;
+  }
+  .spinner {
+    display: inline-block; width: 20px; height: 20px;
+    border: 2px solid var(--border); border-top-color: var(--a1);
+    border-radius: 50%; animation: spin .6s linear infinite;
+    vertical-align: middle; margin-right: 8px;
+  }
+
+  /* ── Pagination ──────────────────────────────────── */
+  .pagination {
+    display: flex; align-items: center; gap: 6px;
+    padding: 14px 18px; border-top: 1px solid var(--border);
+    justify-content: flex-end;
+  }
+  .page-info { font-size: 12px; color: var(--t3); margin-right: auto; }
+  .page-btn {
+    width: 32px; height: 32px; border-radius: var(--radius-sm);
+    background: var(--surface2); border: 1px solid var(--border);
+    color: var(--t2); font-size: 13px; cursor: pointer;
+    display: flex; align-items: center; justify-content: center;
+    transition: all .12s;
+  }
+  .page-btn:hover { background: var(--surface3); color: var(--t1); }
+  .page-btn.active { background: var(--a1); color: #fff; border-color: var(--a1); }
+  .page-btn:disabled { opacity: .35; cursor: not-allowed; }
+
+  /* ── Dashboard charts ────────────────────────────── */
+  .charts-grid { display: grid; grid-template-columns: 2fr 1fr; gap: 16px; margin-top: 20px; }
+  .chart-card {
+    background: var(--surface); border: 1px solid var(--border);
+    border-radius: var(--radius); padding: 20px;
+    animation: fadeUp .5s ease both;
+  }
+  .chart-card h3 { font-family: 'Syne', sans-serif; font-size: 13px; font-weight: 700; margin-bottom: 16px; }
+  .bar-chart { display: flex; align-items: flex-end; gap: 8px; height: 100px; }
+  .bar-wrap { flex: 1; display: flex; flex-direction: column; align-items: center; gap: 4px; }
+  .bar-col {
+    width: 100%; border-radius: 4px 4px 0 0;
+    background: linear-gradient(180deg, var(--a1), rgba(79,142,247,.3));
+    min-height: 4px; transition: height .5s ease;
+    position: relative;
+  }
+  .bar-col:hover::after {
+    content: attr(data-val);
+    position: absolute; top: -22px; left: 50%; transform: translateX(-50%);
+    background: var(--surface3); border: 1px solid var(--border2);
+    color: var(--t1); font-size: 11px; padding: 2px 6px; border-radius: 4px;
+    white-space: nowrap;
+  }
+  .bar-label { font-size: 10px; color: var(--t3); }
+
+  .donut-wrap { position: relative; display: flex; flex-direction: column; align-items: center; gap: 12px; }
+  .donut-legend { width: 100%; display: flex; flex-direction: column; gap: 6px; }
+  .legend-item { display: flex; align-items: center; gap: 8px; font-size: 12px; }
+  .legend-dot { width: 8px; height: 8px; border-radius: 50%; flex-shrink: 0; }
+  .legend-name { flex: 1; color: var(--t2); }
+  .legend-val  { font-weight: 600; color: var(--t1); }
+
+  /* ── Konfirmasyonlu silme ────────────────────────── */
+  .confirm-modal .modal-body { text-align: center; padding: 28px 24px; }
+  .confirm-modal .confirm-icon { font-size: 40px; margin-bottom: 12px; }
+  .confirm-modal h3 { font-family: 'Syne', sans-serif; font-size: 16px; margin-bottom: 8px; }
+  .confirm-modal p { font-size: 13px; color: var(--t2); }
+
+  /* ── Animations ──────────────────────────────────── */
+  @keyframes fadeUp {
+    from { opacity: 0; transform: translateY(12px); }
+    to   { opacity: 1; transform: translateY(0); }
+  }
+  @keyframes fadeIn {
+    from { opacity: 0; } to { opacity: 1; }
+  }
+  @keyframes slideUp {
+    from { opacity: 0; transform: translateY(20px); }
+    to   { opacity: 1; transform: translateY(0); }
+  }
+  @keyframes spin { to { transform: rotate(360deg); } }
+  @keyframes toastIn {
+    from { opacity: 0; transform: translateX(20px); }
+    to   { opacity: 1; transform: translateX(0); }
+  }
+
+  tbody tr:nth-child(1) { animation-delay: .04s; }
+  tbody tr:nth-child(2) { animation-delay: .08s; }
+  tbody tr:nth-child(3) { animation-delay: .12s; }
+  tbody tr:nth-child(4) { animation-delay: .16s; }
+  tbody tr:nth-child(5) { animation-delay: .20s; }
+
+  /* ── Scrollbar ───────────────────────────────────── */
+  ::-webkit-scrollbar { width: 6px; height: 6px; }
+  ::-webkit-scrollbar-track { background: transparent; }
+  ::-webkit-scrollbar-thumb { background: var(--border2); border-radius: 99px; }
+
+  /* ── Responsive ──────────────────────────────────── */
+  @media (max-width: 900px) {
+    .stats-grid { grid-template-columns: repeat(2, 1fr); }
+    .charts-grid { grid-template-columns: 1fr; }
+    .sidebar { width: 60px; }
+    .sidebar-logo h1, .sidebar-logo p,
+    .nav-item span:not(.nav-icon),
+    .nav-section-label, .sidebar-footer .user-name,
+    .sidebar-footer .user-role { display: none; }
+    .nav-item { justify-content: center; }
+    .form-grid { grid-template-columns: 1fr; }
+  }
+</style>
+</head>
+<body>
+
+<!-- Background blobs -->
+<div class="blob blob-1"></div>
+<div class="blob blob-2"></div>
+<div class="blob blob-3"></div>
+
+<div id="app">
+
+  <!-- ── Sidebar ────────────────────────────── -->
+  <aside class="sidebar">
+    <div class="sidebar-logo">
+      <div class="logo-icon">⬡</div>
+      <h1>DepoYönet</h1>
+      <p>Akıllı Depo Sistemi</p>
+    </div>
+
+    <nav class="sidebar-nav">
+      <div class="nav-section-label">Genel</div>
+      <div class="nav-item active" data-page="dashboard" onclick="goPage(this)">
+        <span class="nav-icon">🏠</span><span>Dashboard</span>
+      </div>
+      <div class="nav-item" data-page="inventory" onclick="goPage(this)">
+        <span class="nav-icon">📦</span><span>Envanter</span>
+        <span class="nav-badge" id="badge-low">0</span>
+      </div>
+      <div class="nav-item" data-page="add" onclick="goPage(this)">
+        <span class="nav-icon">➕</span><span>Ürün Ekle</span>
+      </div>
+
+      <div class="nav-item" data-page="renkler" onclick="goPage(this)">
+        <span class="nav-icon">🎨</span><span>Renk Yönetimi</span>
+      </div>
+
+      <div class="nav-item" data-page="tara" onclick="goPage(this)">
+        <span class="nav-icon">📷</span><span>Kamera Tara</span>
+      </div>
+
+      <div class="nav-item" data-page="hareketler" onclick="goPage(this)">
+        <span class="nav-icon">📋</span><span>Son Hareketler</span>
+      </div>
+
+      <div class="nav-item" onclick="showToast('Yakında gelecek!','info','ℹ️')">
+        <span class="nav-icon">📊</span><span>Raporlar</span>
+      </div>
+      <div class="nav-item" onclick="showToast('Yakında gelecek!','info','ℹ️')">
+        <span class="nav-icon">🔔</span><span>Bildirimler</span>
+        <span class="nav-badge">3</span>
+      </div>
+      <div class="nav-item" onclick="showToast('Yakında gelecek!','info','ℹ️')">
+        <span class="nav-icon">⚙️</span><span>Ayarlar</span>
+      </div>
+    </nav>
+
+    <div class="sidebar-footer">
+      <div class="avatar">YÇ</div>
+      <div>
+        <div class="user-name">M. Yasir Çelik</div>
+        <div class="user-role">Depo Personeli</div>
+      </div>
+    </div>
+  </aside>
+
+  <!-- ── Main ───────────────────────────────── -->
+  <div class="main">
+
+    <!-- Topbar -->
+    <div class="topbar">
+      <div>
+        <div class="topbar-title" id="topbar-title">Dashboard</div>
+        <div class="topbar-sub" id="topbar-sub">Genel bakış ve istatistikler</div>
+      </div>
+      <div class="topbar-spacer"></div>
+      <div class="search-box">
+        <span class="search-icon">🔍</span>
+        <input type="text" placeholder="Ürün ara..." id="global-search" oninput="handleSearch(this.value)">
+      </div>
+      <div class="topbar-actions">
+        <div class="icon-btn" title="Yenile" onclick="reloadData()">🔄</div>
+        <div class="icon-btn" title="Bildirimler" onclick="showToast('3 okunmamış bildirim','info','🔔')">
+          🔔<div class="notif-dot"></div>
+        </div>
+        <div class="icon-btn" title="Profil">👤</div>
+      </div>
+    </div>
+
+    <!-- ── PAGE: Dashboard ──────────────────── -->
+    <div class="page active" id="page-dashboard">
+      <div class="stats-grid">
+        <div class="stat-card blue" style="animation-delay:.05s">
+          <div class="stat-icon">📦</div>
+          <div class="stat-label">Toplam Ürün</div>
+          <div class="stat-value" id="stat-total">—</div>
+          <div class="stat-sub">Sistemde kayıtlı</div>
+        </div>
+        <div class="stat-card teal" style="animation-delay:.10s">
+          <div class="stat-icon">✅</div>
+          <div class="stat-label">Stokta</div>
+          <div class="stat-value" id="stat-ok">—</div>
+          <div class="stat-sub">Normal seviye</div>
+        </div>
+        <div class="stat-card warn" style="animation-delay:.15s">
+          <div class="stat-icon">⚠️</div>
+          <div class="stat-label">Düşük Stok</div>
+          <div class="stat-value" id="stat-low">—</div>
+          <div class="stat-sub">Dikkat gerekiyor</div>
+        </div>
+        <div class="stat-card danger" style="animation-delay:.20s">
+          <div class="stat-icon">🚫</div>
+          <div class="stat-label">Tükendi</div>
+          <div class="stat-value" id="stat-empty">—</div>
+          <div class="stat-sub">Acil sipariş</div>
+        </div>
+      </div>
+
+      <div class="charts-grid">
+        <div class="chart-card">
+          <h3>Haftalık Hareket</h3>
+          <div class="bar-chart" id="bar-chart"></div>
+        </div>
+        <div class="chart-card">
+          <h3>Kategori Dağılımı</h3>
+          <div class="donut-wrap">
+            <canvas id="donut-canvas" width="120" height="120"></canvas>
+            <div class="donut-legend" id="donut-legend"></div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Recent table -->
+      <div style="margin-top:20px">
+        <div class="section-header">
+          <div class="section-title">Son Eklenen Ürünler</div>
+          <button class="btn btn-ghost btn-sm" onclick="goPageDirect('inventory')">Tümünü Gör →</button>
+        </div>
+        <div class="table-wrap">
+          <table>
+            <thead>
+              <tr>
+                <th>Ürün Adı</th>
+                <th>SKU</th>
+                <th>Kategori</th>
+                <th>Stok</th>
+                <th>Durum</th>
+              </tr>
+            </thead>
+            <tbody id="recent-tbody">
+              <tr class="loader-row"><td colspan="5"><span class="spinner"></span>Yükleniyor...</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+    <!-- ── PAGE: Renkler ───────────────────── -->
+<div class="page" id="page-renkler">
+  <div class="section-header">
+    <div class="section-title">Renk Yönetimi</div>
+    <button class="btn btn-primary" onclick="renkEkleModal()">＋ Yeni Renk</button>
+  </div>
+
+  <div class="table-wrap">
+    <table>
+      <thead>
+        <tr>
+          <th>Renk</th>
+          <th>Önizleme</th>
+          <th>Ürün</th>
+          <th>Çarpan</th>
+          <th>Birim</th>
+          <th>İşlemler</th>
+        </tr>
+      </thead>
+      <tbody id="renk-tbody"></tbody>
+    </table>
+  </div>
+</div>
+
+<!-- ── Renk Düzenle Modal ───────────────── -->
+<div class="modal-overlay" id="renk-modal">
+  <div class="modal">
+    <div class="modal-header">
+      <div class="modal-title" id="renk-modal-baslik">🎨 Renk Düzenle</div>
+      <div class="modal-close" onclick="closeModal('renk-modal')">✕</div>
+    </div>
+    <div class="modal-body">
+      <div class="form-grid">
+        <div class="form-group">
+          <label>RENK ADI</label>
+          <input class="form-input" id="rm-renk" placeholder="sari, mavi, kirmizi...">
+          <div class="form-hint">Küçük harf, Türkçe karakter kullanma</div>
+        </div>
+        <div class="form-group">
+          <label>ÖNİZLEME</label>
+          <input type="color" id="rm-preview"
+            style="width:100%;height:42px;border-radius:8px;border:1px solid var(--border);background:var(--surface2);cursor:pointer">
+        </div>
+        <div class="form-group">
+          <label>ÜRÜN ADI *</label>
+          <input class="form-input" id="rm-urun" placeholder="RAM, Yumurta...">
+        </div>
+        <div class="form-group">
+          <label>ÇARPAN</label>
+          <input class="form-input" id="rm-carpan" type="number" min="1" value="1">
+          <div class="form-hint">Miktar × çarpan = gerçek stok</div>
+        </div>
+        <div class="form-group full">
+          <label>BİRİM</label>
+          <input class="form-input" id="rm-birim" placeholder="adet, karton, paket...">
+        </div>
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-ghost" onclick="closeModal('renk-modal')">İptal</button>
+      <button class="btn btn-primary" onclick="renkKaydet()">💾 Kaydet</button>
+    </div>
+  </div>
+</div>
+
+<!-- ── PAGE: Hareketler ─────────────────── -->
+<div class="page" id="page-hareketler">
+  <div class="section-header">
+    <div class="section-title">Son Hareketler</div>
+    <button class="btn btn-ghost btn-sm" onclick="hareketlerYukle()">🔄 Yenile</button>
+  </div>
+  <div class="table-wrap">
+    <table>
+      <thead>
+        <tr>
+          <th>#</th>
+          <th>Ürün</th>
+          <th>Renk</th>
+          <th>Miktar</th>
+          <th>Zaman</th>
+        </tr>
+      </thead>
+      <tbody id="hareket-tbody"></tbody>
+    </table>
+  </div>
+</div>
+    <!-- ── PAGE: Inventory ──────────────────── -->
+    <div class="page" id="page-inventory">
+      <div class="section-header">
+        <div class="section-title">Tüm Ürünler</div>
+        <button class="btn btn-primary" onclick="openAddModal()">
+          ＋ Yeni Ürün Ekle
+        </button>
+      </div>
+
+      <div class="table-wrap">
+        <div class="table-toolbar">
+          <div class="filter-group" id="cat-filters">
+            <div class="filter-chip active" data-cat="" onclick="filterCat(this)">Tümü</div>
+          </div>
+          <div style="margin-left:auto;display:flex;gap:8px;align-items:center">
+            <select class="form-select" style="width:auto;padding:6px 10px;font-size:12px" onchange="filterSort(this.value)" id="sort-select">
+              <option value="">Sırala</option>
+              <option value="name">Ada Göre</option>
+              <option value="stock-asc">Stok ↑</option>
+              <option value="stock-desc">Stok ↓</option>
+            </select>
+          </div>
+        </div>
+        <table>
+          <thead>
+            <tr>
+              <th onclick="sortBy('id')"># <span class="sort-icon">↕</span></th>
+              <th onclick="sortBy('name')">Ürün Adı <span class="sort-icon">↕</span></th>
+              <th>SKU</th>
+              <th>Kategori</th>
+              <th onclick="sortBy('stock')">Stok <span class="sort-icon">↕</span></th>
+              <th>Durum</th>
+              <th>İşlemler</th>
+            </tr>
+          </thead>
+          <tbody id="inv-tbody">
+            <tr class="loader-row"><td colspan="7"><span class="spinner"></span>Yükleniyor...</td></tr>
+          </tbody>
+        </table>
+        <div class="pagination">
+          <div class="page-info" id="page-info">— ürün gösteriliyor</div>
+          <button class="page-btn" id="prev-btn" onclick="changePage(-1)">‹</button>
+          <div id="page-numbers"></div>
+          <button class="page-btn" id="next-btn" onclick="changePage(1)">›</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- ── PAGE: Tara ──────────────────────── -->
+<div class="page" id="page-tara">
+  <div class="section-header">
+    <div class="section-title">Kamera Tara</div>
+  </div>
+
+  <div style="display:grid;grid-template-columns:1fr 1fr;gap:20px;max-width:900px">
+
+    <!-- Kamera -->
+    <div class="chart-card" style="display:flex;flex-direction:column;gap:16px">
+      <h3>📷 Canlı Kamera</h3>
+      <video id="tara-video" autoplay playsinline
+        style="width:100%;border-radius:10px;border:1px solid var(--border);background:#000">
+      </video>
+      <div style="display:flex;gap:8px">
+        <button class="btn btn-primary" id="tara-baslat-btn" onclick="kameraBaslat()">
+          ▶ Kamerayı Aç
+        </button>
+      </div>
+
+      <button class="btn btn-danger" onclick="kameraKapat()" id="tara-kapat-btn" disabled>
+      ⏹ Kamerayı Kapat
+      </button>
+
+      <div style="font-size:12px;color:var(--t3)">
+        Kamerayı açtıktan sonra etiketi kameraya tutun ve "Tara" butonuna basın.
+      </div>
+    </div>
+
+    <!-- Sonuç -->
+    <div class="chart-card" style="display:flex;flex-direction:column;gap:16px">
+      <h3>📊 Tespit Sonucu</h3>
+
+      <div id="tara-sonuc" style="flex:1">
+        <div class="empty-state" style="padding:32px 0">
+          <div class="empty-icon">🎯</div>
+          <h3>Henüz tarama yapılmadı</h3>
+          <p>Kamerayı açıp "Tara" butonuna basın</p>
+        </div>
+      </div>
+
+      <div id="tara-onay" style="display:none;flex-direction:column;gap:10px">
+        <div id="tara-onay-bilgi"
+          style="background:var(--surface2);border:1px solid var(--border);
+          border-radius:10px;padding:16px">
+        </div>
+        <div style="display:flex;gap:8px">
+          <button class="btn btn-success" style="flex:1" onclick="taramaOnayla()">
+            ✅ Stoğa Ekle
+          </button>
+          <button class="btn btn-danger" onclick="taramaIptal()">
+            ✕ İptal
+          </button>
+        </div>
+      </div>
+    </div>
+
+  </div>
+
+  <!-- Son taramalar -->
+  <div style="margin-top:20px;max-width:900px">
+    <div class="section-header">
+      <div class="section-title">Bu Oturumda Tarananlar</div>
+    </div>
+    <div class="table-wrap">
+      <table>
+        <thead>
+          <tr>
+            <th>Ürün</th>
+            <th>Renk</th>
+            <th>Miktar</th>
+            <th>Zaman</th>
+          </tr>
+        </thead>
+        <tbody id="oturum-tbody">
+          <tr><td colspan="4" style="text-align:center;padding:24px;color:var(--t3)">
+            Henüz tarama yapılmadı
+          </td></tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+</div>
+
+    <!-- ── PAGE: Add ────────────────────────── -->
+    <div class="page" id="page-add">
+      <div class="section-header">
+        <div class="section-title">Yeni Ürün Ekle</div>
+      </div>
+      <div style="max-width:600px">
+        <div class="table-wrap" style="padding:24px">
+          <div class="form-grid" id="add-form">
+            <div class="form-group">
+              <label>ÜRÜN ADI *</label>
+              <input class="form-input" id="f-name" placeholder="Laptop Stand Alüminyum" required>
+            </div>
+            <div class="form-group">
+              <label>SKU *</label>
+              <input class="form-input" id="f-sku" placeholder="LS-001">
+            </div>
+            <div class="form-group">
+              <label>KATEGORİ</label>
+              <select class="form-select" id="f-cat">
+                <option>Elektronik</option>
+                <option>Mobilya</option>
+                <option>Kırtasiye</option>
+                <option>Ofis Gereçleri</option>
+                <option>Temizlik</option>
+                <option>Diğer</option>
+              </select>
+            </div>
+            <div class="form-group">
+              <label>STOK MİKTARI *</label>
+              <input class="form-input" id="f-stock" type="number" min="0" placeholder="0">
+            </div>
+            <div class="form-group">
+              <label>MİN. STOK EŞİĞİ</label>
+              <input class="form-input" id="f-min" type="number" min="0" placeholder="10">
+            </div>
+            <div class="form-group">
+              <label>DEPO KONUMU</label>
+              <input class="form-input" id="f-loc" placeholder="Raf A-12">
+            </div>
+            <div class="form-group full">
+              <label>AÇIKLAMA</label>
+              <textarea class="form-textarea" id="f-desc" placeholder="Ürün hakkında notlar..."></textarea>
+            </div>
+          </div>
+          <div style="display:flex;gap:10px;margin-top:20px">
+            <button class="btn btn-primary" onclick="submitAdd()">✓ Ürün Ekle</button>
+            <button class="btn btn-ghost" onclick="clearAddForm()">Temizle</button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+  </div><!-- /main -->
+</div><!-- /app -->
+
+<!-- ── Edit Modal ────────────────────────────── -->
+<div class="modal-overlay" id="edit-modal">
+  <div class="modal">
+    <div class="modal-header">
+      <div class="modal-title">✏️ Ürün Düzenle</div>
+      <div class="modal-close" onclick="closeModal('edit-modal')">✕</div>
+    </div>
+    <div class="modal-body">
+      <div class="form-grid">
+        <div class="form-group">
+          <label>ÜRÜN ADI *</label>
+          <input class="form-input" id="e-name" placeholder="Ürün adı">
+        </div>
+        <div class="form-group">
+          <label>SKU</label>
+          <input class="form-input" id="e-sku" placeholder="SKU">
+        </div>
+        <div class="form-group">
+          <label>KATEGORİ</label>
+          <select class="form-select" id="e-cat">
+            <option>Elektronik</option>
+            <option>Mobilya</option>
+            <option>Kırtasiye</option>
+            <option>Ofis Gereçleri</option>
+            <option>Temizlik</option>
+            <option>Diğer</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label>STOK</label>
+          <input class="form-input" id="e-stock" type="number" min="0">
+        </div>
+        <div class="form-group">
+          <label>MİN. EŞİK</label>
+          <input class="form-input" id="e-min" type="number" min="0">
+        </div>
+        <div class="form-group">
+          <label>KONUM</label>
+          <input class="form-input" id="e-loc">
+        </div>
+        <div class="form-group full">
+          <label>AÇIKLAMA</label>
+          <textarea class="form-textarea" id="e-desc"></textarea>
+        </div>
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-ghost" onclick="closeModal('edit-modal')">İptal</button>
+      <button class="btn btn-primary" onclick="submitEdit()">💾 Kaydet</button>
+    </div>
+  </div>
+</div>
+
+<!-- ── Delete Confirm Modal ──────────────────── -->
+<div class="modal-overlay" id="del-modal">
+  <div class="modal confirm-modal" style="max-width:380px">
+    <div class="modal-header">
+      <div class="modal-title">Silme Onayı</div>
+      <div class="modal-close" onclick="closeModal('del-modal')">✕</div>
+    </div>
+    <div class="modal-body">
+      <div class="confirm-icon">🗑️</div>
+      <h3>Bu ürünü silmek istediğinize emin misiniz?</h3>
+      <p style="margin-top:8px"><strong id="del-product-name" style="color:var(--t1)"></strong> silinecek. Bu işlem geri alınamaz.</p>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-ghost" onclick="closeModal('del-modal')">İptal</button>
+      <button class="btn btn-danger" onclick="confirmDelete()">🗑️ Evet, Sil</button>
+    </div>
+  </div>
+</div>
+
+<!-- ── Toast container ───────────────────────── -->
+<div id="toast-container"></div>
+
+<script>
+// ── CONFIG ─────────────────────────────────────
+const API = "http://localhost:8000";
+
+// ── STATE ──────────────────────────────────────
+let products       = [];
+let filteredProducts = [];
+let currentPage    = 1;
+const PAGE_SIZE    = 8;
+let currentCat     = '';
+let currentSort    = '';
+let editingId      = null;
+let deletingId     = null;
+let searchQuery    = '';
+
+// ── API CALLS ───────────────────────────────────
+async function apiFetch(path, options = {}) {
+  const r = await fetch(API + path, {
+    headers: { "Content-Type": "application/json" },
+    ...options
+  });
+  if (!r.ok) throw new Error(await r.text());
+  return r.json();
+}
+
+async function apiGetAll()        { return apiFetch("/stok"); }
+async function apiGetRenkler()    { return apiFetch("/renkler"); }
+async function apiGetHareketler() { return apiFetch("/hareketler"); }
+
+async function apiCreate(payload) {
+  return apiFetch("/stok/ekle", {
+    method: "POST",
+    body: JSON.stringify(payload)
+  });
+}
+
+async function apiDelete(id) {
+  return apiFetch(`/stok/${id}`, { method: "DELETE" });
+}
+
+async function apiRenkGuncelle(renk, payload) {
+  return apiFetch(`/renkler/${renk}`, {
+    method: "PUT",
+    body: JSON.stringify(payload)
+  });
+}
+
+// ── INIT ────────────────────────────────────────
+async function init() {
+  await loadInventory();
+  renderDashboard();
+  buildCatFilters();
+  otomatikYenile();
+  await renklerYukle();
+  await hareketlerYukle();
+}
+
+// ── OTOMATİK YENİLE (5 saniyede bir) ───────────
+function otomatikYenile() {
+  setInterval(async () => {
+    const data = await apiGetAll();
+    products = data.map(p => ({
+      id:       p.id,
+      name:     p.urun,
+      sku:      p.renk ? `${p.renk.slice(0,2).toUpperCase()}-${String(p.id).padStart(3,'0')}` : `UR-${String(p.id).padStart(3,'0')}`,
+      category: p.birim || "adet",
+      stock:    p.miktar,
+      minStock: 10,
+      location: "-",
+      description: "",
+      renk:     p.renk,
+      guncelleme: p.guncelleme
+    }));
+    applyFiltersAndRender(products);
+    updateStats(products);
+    renderRecentTable(products.slice(0, 5));
+    renderDashboard();
+  }, 5000);
+}
+
+// ── LOAD & RENDER ───────────────────────────────
+async function loadInventory() {
+  const data = await apiGetAll();
+  products = data.map(p => ({
+    id:       p.id,
+    name:     p.urun,
+    sku:      p.renk ? `${p.renk.slice(0,2).toUpperCase()}-${String(p.id).padStart(3,'0')}` : `UR-${String(p.id).padStart(3,'0')}`,
+    category: p.birim || "adet",
+    stock:    p.miktar,
+    minStock: 10,
+    location: "-",
+    description: "",
+    renk:     p.renk,
+    guncelleme: p.guncelleme
+  }));
+  applyFiltersAndRender(products);
+  updateStats(products);
+  renderRecentTable(products.slice(0, 5));
+}
+
+async function reloadData() {
+  showToast("Veriler yenileniyor...", "info", "🔄");
+  await loadInventory();
+  renderDashboard();
+  showToast("Veriler güncellendi", "success", "✅");
+}
+
+function applyFiltersAndRender(data) {
+  let d = [...data];
+  if (currentCat)    d = d.filter(p => p.category === currentCat);
+  if (searchQuery)   d = d.filter(p =>
+    p.name.toLowerCase().includes(searchQuery) ||
+    p.sku.toLowerCase().includes(searchQuery)
+  );
+  if (currentSort === "name")       d.sort((a,b) => a.name.localeCompare(b.name));
+  if (currentSort === "stock-asc")  d.sort((a,b) => a.stock - b.stock);
+  if (currentSort === "stock-desc") d.sort((a,b) => b.stock - a.stock);
+  filteredProducts = d;
+  currentPage = 1;
+  renderTable();
+}
+
+function renderTable() {
+  const tbody = document.getElementById("inv-tbody");
+  const start = (currentPage - 1) * PAGE_SIZE;
+  const slice = filteredProducts.slice(start, start + PAGE_SIZE);
+
+  if (!slice.length) {
+    tbody.innerHTML = `<tr><td colspan="7"><div class="empty-state">
+      <div class="empty-icon">📦</div>
+      <h3>Ürün bulunamadı</h3>
+      <p>Henüz stok kaydı yok. Kamerayı çalıştırın.</p>
+    </div></td></tr>`;
+    updatePagination();
+    return;
+  }
+
+  tbody.innerHTML = slice.map(p => {
+    const pct = p.minStock > 0 ? Math.min(p.stock / (p.minStock * 5), 1) : 1;
+    const cls = p.stock === 0 ? "danger" : p.stock < p.minStock ? "warn" : "";
+    const pill = p.stock === 0
+      ? '<span class="status-pill empty">Tükendi</span>'
+      : p.stock < p.minStock
+      ? '<span class="status-pill low">Düşük</span>'
+      : '<span class="status-pill ok">Normal</span>';
+    const renkKutu = p.renk
+      ? `<span style="display:inline-block;width:12px;height:12px;border-radius:3px;background:${p.renk};margin-right:6px;vertical-align:middle;border:1px solid #333"></span>`
+      : "";
+    return `<tr>
+      <td>${p.id}</td>
+      <td class="primary">${renkKutu}${p.name}</td>
+      <td><span class="sku-badge">${p.sku}</span></td>
+      <td>${p.category}</td>
+      <td>
+        <div class="stock-cell">
+          <div class="stock-bar">
+            <div class="stock-fill ${cls}" style="width:${Math.round(pct*100)}%"></div>
+          </div>
+          <span style="font-weight:600;color:${p.stock===0?'var(--danger)':p.stock<p.minStock?'var(--warn)':'var(--t1)'}">${p.stock}</span>
+        </div>
+      </td>
+      <td>${pill}</td>
+      <td>
+        <div class="action-group">
+          <button class="btn btn-danger btn-sm" onclick="openDelModal(${p.id}, '${p.name}')">🗑️</button>
+        </div>
+      </td>
+    </tr>`;
+  }).join("");
+
+  updatePagination();
+}
+
+function updatePagination() {
+  const total   = filteredProducts.length;
+  const pages   = Math.ceil(total / PAGE_SIZE);
+  const start   = (currentPage - 1) * PAGE_SIZE + 1;
+  const end     = Math.min(currentPage * PAGE_SIZE, total);
+
+  document.getElementById("page-info").textContent =
+    total ? `${start}–${end} / ${total} ürün` : "0 ürün";
+
+  document.getElementById("prev-btn").disabled = currentPage <= 1;
+  document.getElementById("next-btn").disabled = currentPage >= pages;
+
+  const nums = document.getElementById("page-numbers");
+  nums.innerHTML = "";
+  for (let i = 1; i <= pages; i++) {
+    const btn = document.createElement("button");
+    btn.className = `page-btn${i === currentPage ? " active" : ""}`;
+    btn.textContent = i;
+    btn.onclick = () => { currentPage = i; renderTable(); };
+    nums.appendChild(btn);
+  }
+}
+
+function changePage(dir) {
+  const pages = Math.ceil(filteredProducts.length / PAGE_SIZE);
+  currentPage = Math.max(1, Math.min(pages, currentPage + dir));
+  renderTable();
+}
+
+// ── DASHBOARD ───────────────────────────────────
+function renderDashboard() {
+  updateStats(products);
+  renderBarChart();
+  renderDonut();
+}
+
+function updateStats(data) {
+  const total = data.length;
+  const ok    = data.filter(p => p.stock >= p.minStock).length;
+  const low   = data.filter(p => p.stock > 0 && p.stock < p.minStock).length;
+  const empty = data.filter(p => p.stock === 0).length;
+
+  document.getElementById("stat-total").textContent = total;
+  document.getElementById("stat-ok").textContent    = ok;
+  document.getElementById("stat-low").textContent   = low;
+  document.getElementById("stat-empty").textContent = empty;
+
+  const badge = document.getElementById("badge-low");
+  badge.textContent = low + empty;
+  badge.style.display = (low + empty) ? "inline" : "none";
+}
+
+function renderRecentTable(data) {
+  const tbody = document.getElementById("recent-tbody");
+  if (!data.length) {
+    tbody.innerHTML = `<tr><td colspan="5" style="text-align:center;padding:32px;color:var(--t3)">
+      Henüz kayıt yok. Kamerayı çalıştırın.
+    </td></tr>`;
+    return;
+  }
+  tbody.innerHTML = data.map(p => {
+    const pill = p.stock === 0
+      ? '<span class="status-pill empty">Tükendi</span>'
+      : p.stock < p.minStock
+      ? '<span class="status-pill low">Düşük</span>'
+      : '<span class="status-pill ok">Normal</span>';
+    return `<tr>
+      <td class="primary">${p.name}</td>
+      <td><span class="sku-badge">${p.sku}</span></td>
+      <td>${p.category}</td>
+      <td>${p.stock}</td>
+      <td>${pill}</td>
+    </tr>`;
+  }).join("");
+}
+
+function renderBarChart() {
+  const container = document.getElementById("bar-chart");
+  if (!container) return;
+  const top7 = [...products].sort((a,b) => b.stock - a.stock).slice(0, 7);
+  const maks = Math.max(...top7.map(p => p.stock), 1);
+  container.innerHTML = top7.map(p => `
+    <div class="bar-wrap">
+      <div class="bar-col" data-val="${p.stock}"
+           style="height:${Math.round((p.stock/maks)*90)}px"></div>
+      <div class="bar-label">${p.name.split(" ")[0]}</div>
+    </div>
+  `).join("");
+}
+
+function renderDonut() {
+  const canvas = document.getElementById("donut-canvas");
+  if (!canvas) return;
+  const ctx   = canvas.getContext("2d");
+  const legend = document.getElementById("donut-legend");
+
+  const gruplar = {};
+  products.forEach(p => {
+    gruplar[p.category] = (gruplar[p.category] || 0) + p.stock;
+  });
+
+  const renkler = ["#4F8EF7","#7B5CF0","#00D4AA","#F59E0B","#EF4444","#22C55E"];
+  const keys    = Object.keys(gruplar);
+  const vals    = keys.map(k => gruplar[k]);
+  const toplam  = vals.reduce((a,b) => a+b, 0) || 1;
+
+  ctx.clearRect(0, 0, 120, 120);
+  let aci = -Math.PI / 2;
+  vals.forEach((v, i) => {
+    const dilim = (v / toplam) * 2 * Math.PI;
+    ctx.beginPath();
+    ctx.moveTo(60, 60);
+    ctx.arc(60, 60, 50, aci, aci + dilim);
+    ctx.closePath();
+    ctx.fillStyle = renkler[i % renkler.length];
+    ctx.fill();
+    aci += dilim;
+  });
+
+  ctx.beginPath();
+  ctx.arc(60, 60, 28, 0, 2 * Math.PI);
+  ctx.fillStyle = "#0E1628";
+  ctx.fill();
+
+  legend.innerHTML = keys.map((k, i) => `
+    <div class="legend-item">
+      <div class="legend-dot" style="background:${renkler[i % renkler.length]}"></div>
+      <div class="legend-name">${k}</div>
+      <div class="legend-val">${gruplar[k]}</div>
+    </div>
+  `).join("");
+}
+
+// ── KATEGORİ FİLTRE ─────────────────────────────
+function buildCatFilters() {
+  const cats    = [...new Set(products.map(p => p.category))];
+  const container = document.getElementById("cat-filters");
+  container.innerHTML = `<div class="filter-chip active" data-cat="" onclick="filterCat(this)">Tümü</div>`;
+  cats.forEach(c => {
+    container.innerHTML += `<div class="filter-chip" data-cat="${c}" onclick="filterCat(this)">${c}</div>`;
+  });
+}
+
+function filterCat(el) {
+  document.querySelectorAll(".filter-chip").forEach(c => c.classList.remove("active"));
+  el.classList.add("active");
+  currentCat = el.dataset.cat;
+  applyFiltersAndRender(products);
+}
+
+function filterSort(val) {
+  currentSort = val;
+  applyFiltersAndRender(products);
+}
+
+function sortBy(field) {
+  if (field === "stock") currentSort = currentSort === "stock-asc" ? "stock-desc" : "stock-asc";
+  if (field === "name")  currentSort = "name";
+  applyFiltersAndRender(products);
+}
+
+function handleSearch(val) {
+  searchQuery = val.toLowerCase();
+  applyFiltersAndRender(products);
+}
+
+// ── ÜRÜN EKLE (manuel) ──────────────────────────
+async function submitAdd() {
+  const name  = document.getElementById("f-name").value.trim();
+  const stock = parseInt(document.getElementById("f-stock").value);
+  const birim = document.getElementById("f-cat").value;
+
+  if (!name || isNaN(stock)) {
+    showToast("Ürün adı ve stok zorunlu!", "error", "❌");
+    return;
+  }
+
+  try {
+    await apiCreate({ urun: name, miktar: stock, birim });
+    showToast(`${name} eklendi`, "success", "✅");
+    clearAddForm();
+    await loadInventory();
+    buildCatFilters();
+    goPageDirect("inventory");
+  } catch(e) {
+    showToast("Hata: " + e.message, "error", "❌");
+  }
+}
+
+function clearAddForm() {
+  ["f-name","f-stock","f-desc","f-loc","f-min","f-sku"].forEach(id => {
+    const el = document.getElementById(id);
+    if (el) el.value = "";
+  });
+}
+
+// ── SİLME ───────────────────────────────────────
+function openDelModal(id, name) {
+  deletingId = id;
+  document.getElementById("del-product-name").textContent = name;
+  document.getElementById("del-modal").classList.add("open");
+}
+
+async function confirmDelete() {
+  if (!deletingId) return;
+  try {
+    await apiDelete(deletingId);
+    showToast("Ürün silindi", "success", "🗑️");
+    closeModal("del-modal");
+    await loadInventory();
+  } catch(e) {
+    showToast("Silme hatası: " + e.message, "error", "❌");
+  }
+  deletingId = null;
+}
+
+// ── MODAL ───────────────────────────────────────
+function openAddModal() { goPageDirect("add"); }
+
+function openEditModal(id) {
+  showToast("Düzenleme için ürünü silip tekrar ekleyin", "info", "ℹ️");
+}
+
+function closeModal(id) {
+  document.getElementById(id).classList.remove("open");
+}
+
+// ── NAVİGASYON ──────────────────────────────────
+function goPage(el) {
+  const page = el.dataset.page;
+  document.querySelectorAll(".nav-item").forEach(i => i.classList.remove("active"));
+  el.classList.add("active");
+  document.querySelectorAll(".page").forEach(p => p.classList.remove("active"));
+  document.getElementById(`page-${page}`).classList.add("active");
+
+  const titles = {
+    dashboard: ["Dashboard", "Genel bakış ve istatistikler"],
+    inventory: ["Envanter", "Tüm ürünler"],
+    add:       ["Ürün Ekle", "Manuel stok girişi"],
+    renkler:   ["Renk Yönetimi", "Renk-ürün eşleştirmeleri"],
+      hareketler: ["Son Hareketler", "Kamera tespit geçmişi"],
+          tara:       ["Kamera Tara", "Etiketi okuyup stoğa ekle"]
+    
+  };
+
+  if (titles[page]) {
+    document.getElementById("topbar-title").textContent = titles[page][0];
+    document.getElementById("topbar-sub").textContent   = titles[page][1];
+  }
+}
+
+function goPageDirect(page) {
+  const el = document.querySelector(`[data-page="${page}"]`);
+  if (el) goPage(el);
+}
+
+// ── TOAST ───────────────────────────────────────
+function showToast(msg, type = "info", icon = "ℹ️") {
+  const container = document.getElementById("toast-container");
+  const toast     = document.createElement("div");
+  toast.className = `toast ${type}`;
+  toast.innerHTML = `<span class="toast-icon">${icon}</span><span class="toast-msg">${msg}</span>`;
+  container.appendChild(toast);
+  setTimeout(() => toast.remove(), 3500);
+}
+
+// ── BAŞLAT ──────────────────────────────────────
+
+// ── RENK YÖNETİMİ ───────────────────────────────
+let duzenlenenRenk = null;
+
+async function renklerYukle() {
+  const data = await apiGetRenkler();
+  const tbody = document.getElementById("renk-tbody");
+
+  const RENK_CSS = {
+    kirmizi: "#ef4444", turuncu: "#f97316", sari: "#eab308",
+    yesil: "#22c55e", acik_yesil: "#84cc16", mavi: "#3b82f6",
+    mor: "#8b5cf6", pembe: "#ec4899", beyaz: "#f1f5f9", siyah: "#1e293b"
+  };
+
+  tbody.innerHTML = Object.entries(data).map(([renk, bilgi]) => `
+    <tr>
+      <td class="primary">${renk}</td>
+      <td>
+        <div style="width:32px;height:32px;border-radius:8px;
+          background:${RENK_CSS[renk] || renk};
+          border:1px solid var(--border)">
+        </div>
+      </td>
+      <td>${bilgi.urun}</td>
+      <td><strong>${bilgi.carpan}</strong></td>
+      <td>${bilgi.birim}</td>
+      <td>
+        <div class="action-group">
+          <button class="btn btn-ghost btn-sm"
+            onclick="renkDuzenle('${renk}', '${bilgi.urun}', ${bilgi.carpan}, '${bilgi.birim}')">
+            ✏️
+          </button>
+          <button class="btn btn-danger btn-sm"
+            onclick="renkSil('${renk}')">
+            🗑️
+          </button>
+        </div>
+      </td>
+    </tr>
+  `).join("");
+}
+
+// ── KAMERA TARA ─────────────────────────────────
+let taraStream     = null;
+let taraOturumu    = [];
+let bekleyenTespit = null;
+
+const RENK_HSV = {
+  kirmizi:    { min: [0,   120,  70], max: [10,  255, 255] },
+  turuncu:    { min: [11,  120,  70], max: [25,  255, 255] },
+  sari:       { min: [26,  120,  70], max: [35,  255, 255] },
+  yesil:      { min: [36,   80,  50], max: [85,  255, 255] },
+  acik_yesil: { min: [86,   80,  50], max: [95,  255, 255] },
+  mavi:       { min: [96,  120,  70], max: [130, 255, 255] },
+  mor:        { min: [131,  80,  50], max: [155, 255, 255] },
+  pembe:      { min: [156,  80,  50], max: [170, 255, 255] },
+};
+
+function kameraKapat() {
+  if (otomatikTaraInterval) {
+    clearInterval(otomatikTaraInterval);
+    otomatikTaraInterval = null;
+  }
+  if (taraStream) {
+    taraStream.getTracks().forEach(t => t.stop());
+    taraStream = null;
+  }
+  document.getElementById("tara-video").srcObject = null;
+  document.getElementById("tara-btn").disabled = true;
+  document.getElementById("tara-kapat-btn").disabled = true;
+  document.getElementById("tara-baslat-btn").disabled = false;
+  document.getElementById("tara-baslat-btn").textContent = "▶ Kamerayı Aç";
+  taramaIptal();
+  showToast("Kamera kapatıldı", "info", "⏹");
+}
+
+let otomatikTaraInterval = null;
+
+async function kameraBaslat() {
+  try {
+    taraStream = await navigator.mediaDevices.getUserMedia({ video: true });
+    document.getElementById("tara-video").srcObject = taraStream;
+    document.getElementById("tara-baslat-btn").disabled = true;
+    document.getElementById("tara-baslat-btn").textContent = "✅ Kamera Açık";
+    document.getElementById("tara-kapat-btn").disabled = false;
+    showToast("Kamera açıldı, otomatik tarama başladı", "success", "📷");
+
+    // Her 3 saniyede bir otomatik tara
+    otomatikTaraInterval = setInterval(async () => {
+      if (!bekleyenTespit) {
+        await manuelTara();
+      }
+    }, 3000);
+
+  } catch(e) {
+    showToast("Kamera açılamadı: " + e.message, "error", "❌");
+  }
+}
+
+function rgbToHsv(r, g, b) {
+  r /= 255; g /= 255; b /= 255;
+  const max = Math.max(r,g,b), min = Math.min(r,g,b);
+  const d = max - min;
+  let h = 0, s = max === 0 ? 0 : d/max, v = max;
+  if (max !== min) {
+    switch(max) {
+      case r: h = ((g-b)/d + (g<b?6:0)) / 6; break;
+      case g: h = ((b-r)/d + 2) / 6; break;
+      case b: h = ((r-g)/d + 4) / 6; break;
+    }
+  }
+  return [Math.round(h*180), Math.round(s*255), Math.round(v*255)];
+}
+
+function renkTespit(imageData) {
+  const { data, width, height } = imageData;
+  const sayac = {};
+  Object.keys(RENK_HSV).forEach(r => sayac[r] = 0);
+  const toplam = width * height;
+
+  for (let i = 0; i < data.length; i += 4) {
+    const [h, s, v] = rgbToHsv(data[i], data[i+1], data[i+2]);
+    for (const [renk, aralik] of Object.entries(RENK_HSV)) {
+      if (h >= aralik.min[0] && h <= aralik.max[0] &&
+          s >= aralik.min[1] && s <= aralik.max[1] &&
+          v >= aralik.min[2] && v <= aralik.max[2]) {
+        sayac[renk]++;
+        break;
+      }
+    }
+  }
+
+  const enFazla = Object.entries(sayac).sort((a,b) => b[1]-a[1])[0];
+  return enFazla[1] > toplam * 0.10 ? enFazla[0] : null;
+}
+
+async function manuelTara() {
+  const video  = document.getElementById("tara-video");
+  const canvas = document.createElement("canvas");
+  canvas.width  = video.videoWidth;
+  canvas.height = video.videoHeight;
+  const ctx = canvas.getContext("2d");
+  ctx.drawImage(video, 0, 0);
+
+  // Renk tespiti
+  const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
+  const renk = renkTespit(imageData);
+
+  // OCR için base64
+  const base64 = canvas.toDataURL("image/jpeg", 0.8).split(",")[1];
+
+  document.getElementById("tara-sonuc").innerHTML = `
+    <div style="text-align:center;padding:20px;color:var(--t2)">
+      <div class="spinner" style="display:inline-block"></div> Analiz ediliyor...
+    </div>`;
+
+  try {
+    const ocrSonuc = await apiFetch("/ocr", {
+      method: "POST",
+      body: JSON.stringify({ goruntu: base64 })
+    });
+
+    const sayi = ocrSonuc.sayi;
+
+    if (!renk || !sayi) {
+      document.getElementById("tara-sonuc").innerHTML = `
+        <div class="empty-state" style="padding:24px 0">
+          <div class="empty-icon">⚠️</div>
+          <h3>Tespit Başarısız</h3>
+          <p>${!renk ? "Renk" : "Sayı"} okunamadı. Tekrar deneyin.</p>
+        </div>`;
+      document.getElementById("tara-onay").style.display = "none";
+      return;
+    }
+
+    const renkler = await apiGetRenkler();
+    if (!renkler[renk]) {
+      showToast(`"${renk}" rengi tanımlı değil`, "error", "❌");
+      return;
+    }
+
+    const bilgi  = renkler[renk];
+    const miktar = sayi * bilgi.carpan;
+    bekleyenTespit = { renk, sayi, urun: bilgi.urun, miktar, birim: bilgi.birim };
+
+    document.getElementById("tara-sonuc").innerHTML = "";
+    document.getElementById("tara-onay").style.display = "flex";
+    document.getElementById("tara-onay-bilgi").innerHTML = `
+      <div style="display:flex;flex-direction:column;gap:10px">
+        <div style="display:flex;justify-content:space-between">
+          <span style="color:var(--t3)">Tespit Edilen Renk</span>
+          <span style="display:flex;align-items:center;gap:6px">
+            <span style="width:14px;height:14px;border-radius:4px;
+              background:${renk};display:inline-block;border:1px solid #333"></span>
+            <strong>${renk}</strong>
+          </span>
+        </div>
+        <div style="display:flex;justify-content:space-between">
+          <span style="color:var(--t3)">Ürün</span>
+          <strong style="color:var(--a1)">${bilgi.urun}</strong>
+        </div>
+        <div style="display:flex;justify-content:space-between">
+          <span style="color:var(--t3)">Okunan Sayı</span>
+          <strong>${sayi}</strong>
+        </div>
+        <div style="display:flex;justify-content:space-between">
+          <span style="color:var(--t3)">Toplam Miktar</span>
+          <strong style="color:var(--success);font-size:18px">
+            ${miktar} ${bilgi.birim}
+          </strong>
+        </div>
+      </div>`;
+
+  } catch(e) {
+    showToast("OCR hatası: " + e.message, "error", "❌");
+  }
+}
+
+async function taramaOnayla() {
+  if (!bekleyenTespit) return;
+  const { renk, sayi } = bekleyenTespit;
+
+  try {
+    await apiFetch("/stok/kamera", {
+      method: "POST",
+      body: JSON.stringify({ renk, sayi })
+    });
+
+    const zaman = new Date().toLocaleTimeString("tr-TR");
+    taraOturumu.unshift({ ...bekleyenTespit, zaman });
+    oturumTabloGuncelle();
+
+    showToast(`${bekleyenTespit.urun} stoğa eklendi ✅`, "success", "📦");
+    taramaIptal();
+    await loadInventory();
+  } catch(e) {
+    showToast("Hata: " + e.message, "error", "❌");
+  }
+}
+
+function taramaIptal() {
+  bekleyenTespit = null;
+  document.getElementById("tara-onay").style.display = "none";
+  document.getElementById("tara-sonuc").innerHTML = `
+    <div class="empty-state" style="padding:32px 0">
+      <div class="empty-icon">🎯</div>
+      <h3>Hazır</h3>
+      <p>"Tara" butonuna basarak devam edin</p>
+    </div>`;
+}
+
+function oturumTabloGuncelle() {
+  const tbody = document.getElementById("oturum-tbody");
+  if (!taraOturumu.length) return;
+  tbody.innerHTML = taraOturumu.map(t => `
+    <tr>
+      <td class="primary">${t.urun}</td>
+      <td>
+        <span style="display:inline-flex;align-items:center;gap:6px">
+          <span style="width:10px;height:10px;border-radius:50%;
+            background:${t.renk};display:inline-block"></span>
+          ${t.renk}
+        </span>
+      </td>
+      <td><strong style="color:var(--success)">+${t.miktar} ${t.birim}</strong></td>
+      <td style="color:var(--t3);font-size:12px">${t.zaman}</td>
+    </tr>
+  `).join("");
+}
+
+// ── SON HAREKETLER ──────────────────────────────
+async function hareketlerYukle() {
+  const data = await apiGetHareketler();
+  const tbody = document.getElementById("hareket-tbody");
+
+  if (!data.length) {
+    tbody.innerHTML = `<tr><td colspan="5"><div class="empty-state">
+      <div class="empty-icon">📋</div>
+      <h3>Henüz hareket yok</h3>
+      <p>Kamera bir şey tespit ettiğinde burada görünecek</p>
+    </div></td></tr>`;
+    return;
+  }
+
+  tbody.innerHTML = data.map(h => `
+    <tr>
+      <td>${h.id}</td>
+      <td class="primary">${h.urun}</td>
+      <td>
+        <span style="display:inline-flex;align-items:center;gap:6px">
+          <span style="width:10px;height:10px;border-radius:50%;
+            background:${h.renk || '#888'};display:inline-block"></span>
+          ${h.renk || "-"}
+        </span>
+      </td>
+      <td><strong style="color:var(--success)">+${h.miktar}</strong></td>
+      <td style="color:var(--t3);font-size:12px">${h.zaman}</td>
+    </tr>
+  `).join("");
+}
+
+function renkEkleModal() {
+  duzenlenenRenk = null;
+  document.getElementById("renk-modal-baslik").textContent = "🎨 Yeni Renk Ekle";
+  document.getElementById("rm-renk").value   = "";
+  document.getElementById("rm-urun").value   = "";
+  document.getElementById("rm-carpan").value = "1";
+  document.getElementById("rm-birim").value  = "adet";
+  document.getElementById("rm-renk").disabled = false;
+  document.getElementById("renk-modal").classList.add("open");
+}
+
+function renkDuzenle(renk, urun, carpan, birim) {
+  duzenlenenRenk = renk;
+  document.getElementById("renk-modal-baslik").textContent = `✏️ Düzenle — ${renk}`;
+  document.getElementById("rm-renk").value   = renk;
+  document.getElementById("rm-urun").value   = urun;
+  document.getElementById("rm-carpan").value = carpan;
+  document.getElementById("rm-birim").value  = birim;
+  document.getElementById("rm-renk").disabled = true;
+  document.getElementById("renk-modal").classList.add("open");
+}
+
+async function renkKaydet() {
+  const renk   = document.getElementById("rm-renk").value.trim();
+  const urun   = document.getElementById("rm-urun").value.trim();
+  const carpan = parseInt(document.getElementById("rm-carpan").value);
+  const birim  = document.getElementById("rm-birim").value.trim();
+
+  if (!renk || !urun || !birim || isNaN(carpan)) {
+    showToast("Tüm alanları doldurun!", "error", "❌");
+    return;
+  }
+
+  try {
+    await apiRenkGuncelle(renk, { urun, carpan, birim });
+    showToast(`${renk} güncellendi`, "success", "✅");
+    closeModal("renk-modal");
+    renklerYukle();
+  } catch(e) {
+    showToast("Hata: " + e.message, "error", "❌");
+  }
+}
+
+async function renkSil(renk) {
+  if (!confirm(`"${renk}" rengini silmek istediğinize emin misiniz?`)) return;
+  try {
+    await apiFetch(`/renkler/${renk}`, { method: "DELETE" });
+    showToast(`${renk} silindi`, "success", "🗑️");
+    renklerYukle();
+  } catch(e) {
+    showToast("Hata: " + e.message, "error", "❌");
+  }
+} 
+
+window.addEventListener("DOMContentLoaded", init);
+</script>
+</body>
+</html>

@@ -1,0 +1,12 @@
+{
+  "kirmizi": { "urun": "Laptop", "carpan": 1, "birim": "adet" },
+  "turuncu": { "urun": "Tablet", "carpan": 1, "birim": "adet" },
+  "sari": { "urun": "RAM", "carpan": 1, "birim": "adet" },
+  "yesil": { "urun": "Klavye", "carpan": 1, "birim": "adet" },
+  "acik_yesil": { "urun": "Mouse", "carpan": 1, "birim": "adet" },
+  "mavi": { "urun": "Yumurta", "carpan": 30, "birim": "karton" },
+  "mor": { "urun": "Kulaklık", "carpan": 1, "birim": "adet" },
+  "pembe": { "urun": "Şarj Kablosu", "carpan": 1, "birim": "adet" },
+  "beyaz": { "urun": "A4 Kağıt", "carpan": 500, "birim": "paket" },
+  "siyah": { "urun": "Toner", "carpan": 1, "birim": "adet" }
+}
