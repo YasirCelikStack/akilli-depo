@@ -2,14 +2,36 @@ from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 from typing import Optional
+from contextlib import asynccontextmanager
 import sqlite3
 import json
 import os
 import uvicorn
+import base64
+import numpy as np
+import cv2
+import easyocr
 
-app = FastAPI(title="Akıllı Depo Yönetim Sistemi API")
+# ── OCR ─────────────────────────────────────────
+ocr_reader = None
 
-# ── CORS (HTML dosyası API'ye erişebilsin) ──────
+def ocr_yukle():
+    global ocr_reader
+    if ocr_reader is None:
+        ocr_reader = easyocr.Reader(["tr", "en"], gpu=False)
+    return ocr_reader
+
+# ── LIFESPAN (başlangıçta OCR yükle) ────────────
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    print("EasyOCR modeli yükleniyor...")
+    ocr_yukle()
+    print("EasyOCR hazır!")
+    yield
+
+app = FastAPI(title="Akıllı Depo Yönetim Sistemi API", lifespan=lifespan)
+
+# ── CORS ────────────────────────────────────────
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["*"],
@@ -67,6 +89,9 @@ class RenkGuncelle(BaseModel):
     carpan: int
     birim:  str
 
+class GoruntuData(BaseModel):
+    goruntu: str
+
 # ── Yardımcı ────────────────────────────────────
 def renkleri_yukle():
     with open("colors.json", "r", encoding="utf-8") as f:
@@ -77,7 +102,6 @@ def renkleri_kaydet(data):
         json.dump(data, f, ensure_ascii=False, indent=2)
 
 # ── STOK ENDPOINTLERİ ───────────────────────────
-
 @app.get("/stok")
 def stok_listesi():
     conn = db_baglanti()
@@ -88,10 +112,7 @@ def stok_listesi():
 @app.post("/stok/ekle")
 def stok_ekle(veri: UrunEkle):
     conn = db_baglanti()
-    mevcut = conn.execute(
-        "SELECT * FROM stok WHERE urun = ?", (veri.urun,)
-    ).fetchone()
-
+    mevcut = conn.execute("SELECT * FROM stok WHERE urun = ?", (veri.urun,)).fetchone()
     if mevcut:
         conn.execute(
             "UPDATE stok SET miktar = miktar + ?, guncelleme = datetime('now','localtime') WHERE urun = ?",
@@ -108,20 +129,13 @@ def stok_ekle(veri: UrunEkle):
 
 @app.post("/stok/kamera")
 def kamera_tespiti(veri: StokGuncelle):
-    """Kamera.py buraya POST atar."""
     renkler = renkleri_yukle()
-
     if veri.renk not in renkler:
         raise HTTPException(status_code=400, detail=f"Bilinmeyen renk: {veri.renk}")
-
     bilgi  = renkler[veri.renk]
     miktar = veri.sayi * bilgi["carpan"]
-
     conn = db_baglanti()
-    mevcut = conn.execute(
-        "SELECT * FROM stok WHERE urun = ?", (bilgi["urun"],)
-    ).fetchone()
-
+    mevcut = conn.execute("SELECT * FROM stok WHERE urun = ?", (bilgi["urun"],)).fetchone()
     if mevcut:
         conn.execute(
             "UPDATE stok SET miktar = miktar + ?, renk = ?, guncelleme = datetime('now','localtime') WHERE urun = ?",
@@ -132,20 +146,13 @@ def kamera_tespiti(veri: StokGuncelle):
             "INSERT INTO stok (urun, miktar, birim, renk, guncelleme) VALUES (?, ?, ?, ?, datetime('now','localtime'))",
             (bilgi["urun"], miktar, bilgi["birim"], veri.renk)
         )
-
     conn.execute(
         "INSERT INTO hareketler (urun, miktar, renk) VALUES (?, ?, ?)",
         (bilgi["urun"], miktar, veri.renk)
     )
     conn.commit()
     conn.close()
-
-    return {
-        "durum":  "ok",
-        "urun":   bilgi["urun"],
-        "miktar": miktar,
-        "birim":  bilgi["birim"]
-    }
+    return {"durum": "ok", "urun": bilgi["urun"], "miktar": miktar, "birim": bilgi["birim"]}
 
 @app.delete("/stok/{urun_id}")
 def stok_sil(urun_id: int):
@@ -158,14 +165,11 @@ def stok_sil(urun_id: int):
 @app.get("/hareketler")
 def hareket_listesi():
     conn = db_baglanti()
-    rows = conn.execute(
-        "SELECT * FROM hareketler ORDER BY zaman DESC LIMIT 50"
-    ).fetchall()
+    rows = conn.execute("SELECT * FROM hareketler ORDER BY zaman DESC LIMIT 50").fetchall()
     conn.close()
     return [dict(r) for r in rows]
 
 # ── RENK YÖNETİMİ ───────────────────────────────
-
 @app.get("/renkler")
 def renk_listesi():
     return renkleri_yukle()
@@ -173,11 +177,7 @@ def renk_listesi():
 @app.put("/renkler/{renk}")
 def renk_guncelle(renk: str, veri: RenkGuncelle):
     renkler = renkleri_yukle()
-    renkler[renk] = {
-        "urun":   veri.urun,
-        "carpan": veri.carpan,
-        "birim":  veri.birim
-    }
+    renkler[renk] = {"urun": veri.urun, "carpan": veri.carpan, "birim": veri.birim}
     renkleri_kaydet(renkler)
     return {"durum": "ok", "renk": renk}
 
@@ -190,40 +190,23 @@ def renk_sil(renk: str):
     renkleri_kaydet(renkler)
     return {"durum": "silindi"}
 
-import base64
-import numpy as np
-import cv2
-import easyocr
-
-ocr_reader = None
-
-def ocr_yukle():
-    global ocr_reader
-    if ocr_reader is None:
-        ocr_reader = easyocr.Reader(["tr", "en"], gpu=False)
-    return ocr_reader
-
-class GoruntuData(BaseModel):
-    goruntu: str  # base64 encoded
-
+# ── OCR ENDPOINTİ ───────────────────────────────
 @app.post("/ocr")
 async def goruntu_ocr(veri: GoruntuData):
-    """Tarayıcıdan gelen base64 görüntüde sayı tespit eder."""
     try:
         img_data = base64.b64decode(veri.goruntu)
         np_arr   = np.frombuffer(img_data, np.uint8)
         frame    = cv2.imdecode(np_arr, cv2.IMREAD_COLOR)
-        
-        reader   = ocr_yukle()
         gri      = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
+        gri      = cv2.resize(gri, (640, 480))
+        gri      = cv2.equalizeHist(gri)
+        reader   = ocr_yukle()
         sonuclar = reader.readtext(gri, allowlist="0123456789")
-        
         sayi = None
         for (_, metin, guven) in sonuclar:
-            if guven > 0.5 and metin.isdigit():
+            if guven > 0.4 and metin.isdigit():
                 sayi = int(metin)
                 break
-        
         return {"sayi": sayi}
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
@@ -233,6 +216,5 @@ if __name__ == "__main__":
     db_olustur()
     print("✅ Veritabanı hazır")
     print("✅ API başlatılıyor → http://localhost:8000")
-    print("📋 Endpoint listesi → http://localhost:8000/docs")
     port = int(os.environ.get("PORT", 8000))
     uvicorn.run(app, host="0.0.0.0", port=port)
