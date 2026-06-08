@@ -513,6 +513,8 @@
     .form-grid { grid-template-columns: 1fr; }
   }
 </style>
+
+<script src="https://cdn.jsdelivr.net/npm/tesseract.js@5/dist/tesseract.min.js"></script>
 </head>
 <body>
 
@@ -1612,12 +1614,13 @@ async function manuelTara() {
     </div>`;
 
   try {
-    const ocrSonuc = await apiFetch("/ocr", {
-      method: "POST",
-      body: JSON.stringify({ goruntu: base64 })
-    });
+    const { data: { text } } = await Tesseract.recognize(
+      canvas,
+      'eng',
+      { tessedit_char_whitelist: '0123456789' }
+  );
 
-    const sayi = ocrSonuc.sayi;
+  const sayi = parseInt(text.trim()) || null; 
 
     if (!renk || !sayi) {
       document.getElementById("tara-sonuc").innerHTML = `
