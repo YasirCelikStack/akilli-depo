@@ -1615,12 +1615,19 @@ async function manuelTara() {
 
   try {
     const { data: { text } } = await Tesseract.recognize(
-      canvas,
-      'eng',
-      { tessedit_char_whitelist: '0123456789' }
-  );
+  canvas,
+  'eng',
+  {
+    tessedit_char_whitelist: '0123456789',
+    tessedit_pageseg_mode: '7',
+  }
+);
 
-  const sayi = parseInt(text.trim()) || null; 
+    const temiz = text.replace(/\D/g, '').trim();
+    const sayi = temiz.length > 0 ? parseInt(temiz) : null;
+
+    console.log("OCR sonucu:", text, "→ sayı:", sayi);
+    console.log("Renk:", renk);
 
     if (!renk || !sayi) {
       document.getElementById("tara-sonuc").innerHTML = `
